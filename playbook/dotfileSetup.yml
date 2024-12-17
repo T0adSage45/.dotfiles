@@ -1,0 +1,69 @@
+---
+- name: Set up Environment
+  hosts: localhost
+  vars:
+    packages:
+      - btop
+      - alacritty
+      - fastfetch
+      - i3
+      - i3status
+      - picom
+      - screenkey
+      - dmenu
+      - flameshot
+      - ranger
+      - rsync
+      - feh
+      - xorg-server
+      - xorg-xinit
+      - xrandr
+  tasks:
+    - name: Update the package database
+      ansible.builtin.pacman:
+        update_cache: yes
+      become: true
+
+    - name: Create directories
+      ansible.builtin.shell:
+        cmd: mkdir -p ~/Pictures ~/tools/yay ~/projects
+      become: false
+
+    - name: Clone yay repository
+      ansible.builtin.git:
+        repo: https://aur.archlinux.org/yay.git
+        dest: ~/tools/yay
+      become: false
+
+    - name: Install yay
+      ansible.builtin.shell:
+        cmd: cd ~/tools/yay && makepkg -si --noconfirm
+      become: false
+
+    - name: Move .devEnv to home
+      ansible.builtin.shell:
+        cmd: mv ~/.dotfiles/.devEnv ~/
+      become: false
+
+         # Include another playbook for dev setup
+    - name: Run the dev setup playbook
+      ansible.builtin.include_tasks:
+        file: ~/.devEnv/playbook/devSetup.yml
+
+    - name: Stow dotfiles
+      ansible.builtin.shell:
+        cmd: stow /
+        chdir: ~/.dotfiles
+      become: false
+
+    - name: Install packages using yay
+      ansible.builtin.shell:
+        cmd: yay -S --noconfirm {{ item }}
+      loop: "{{ packages }}"
+      become: false
+
+    - name: Create .xinitrc
+      ansible.builtin.shell:
+        cmd: echo "exec i3" > ~/.xinitrc
+      become: false
+
